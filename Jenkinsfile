@@ -54,25 +54,25 @@ stages {
     }
   }
 
+
 stage('Deploiement en dev'){
   environment {
-    KUBECONFIG_FILE = credentials("config")
+    KUBECONFIG = credentials("config")
   }
   steps {
     script {
-      sh """
-        mkdir -p \$HOME/.kube
-        cp \$KUBECONFIG_FILE \$HOME/.kube/config
+      sh '''
+      mkdir -p .kube
+      cp $KUBECONFIG .kube/config
+      export KUBECONFIG=$(pwd)/.kube/config
 
-        kubectl create namespace dev || true
+      kubectl create namespace dev || true
 
-        cp fastapi/values.yaml values.yml
-        sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
+      cp fastapi/values.yaml values.yml
+      sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
 
-        helm upgrade --install app fastapi \
-          --values=values.yml \
-          --namespace dev
-      """
+      helm upgrade --install app fastapi --values=values.yml --namespace dev
+      '''
     }
   }
 }

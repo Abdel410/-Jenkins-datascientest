@@ -95,7 +95,8 @@ stage('Deploiement en qa'){
   stage('Deploiement en prod'){
     when {
     branch 'master'
-}    environment {
+    }    
+    environment {
       KUBECONFIG = credentials("config") // we retrieve  kubeconfig from secret file called config saved on jenkins
       }
       steps {

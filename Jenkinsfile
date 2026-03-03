@@ -8,6 +8,10 @@ DOCKER_TAG = "v.${BUILD_ID}.0" // we will tag our images with the current build 
 agent any // Jenkins will be able to select all available agents
 stages {
   stage(' Docker Build'){ // docker build image stage
+    when {
+    branch 'develop'
+}
+    
     steps {
       script {
       sh '''
@@ -18,30 +22,15 @@ stages {
       }
     }
   }
-  stage('Docker run'){ // run container from our builded image
-    steps {
-      script {
-      sh '''
-      docker run -d -p 80:80 --name jenkins $DOCKER_USER/$DOCKER_IMAGE:$DOCKER_TAG
-      sleep 10
-      '''
-      }
-    }
-  }
-  stage('Test Acceptance'){ // we launch the curl command to validate that the container responds to the request
-    steps {
-      script {
-      sh '''
-      curl localhost
-      '''
-      }
-    }
-  }
+
   stage('Docker Push'){ //we pass the built image to our docker hub account
     environment
     {
       DOCKER_PASS = credentials("DOCKER_HUB_PASS") // we retrieve  docker password from secret text called docker_hub_pass saved on jenkins
     }
+    when {
+    branch 'develop'
+}    
     steps {
       script {
         sh '''
@@ -55,10 +44,13 @@ stages {
   }
 
 
-stage('Deploiement en dev'){
+stage('Deploiement en qa'){
   environment {
     KUBECONFIG = credentials("config")
   }
+  when {
+    branch 'develop'
+}  
   steps {
     script {
       sh '''
@@ -66,12 +58,12 @@ stage('Deploiement en dev'){
       cp $KUBECONFIG .kube/config
       export KUBECONFIG=$(pwd)/.kube/config
 
-      kubectl create namespace dev || true
+      kubectl create namespace qa || true
 
       cp fastapi/values.yaml values.yml
       sed -i "s+tag.*+tag: ${DOCKER_TAG}+g" values.yml
 
-      helm upgrade --install app fastapi --values=values.yml --namespace dev
+      helm upgrade --install app fastapi --values=values.yml --namespace qa
       '''
     }
   }
@@ -79,6 +71,9 @@ stage('Deploiement en dev'){
 
 
   stage('Deploiement en staging'){
+    when {
+    branch 'master'
+}    
     environment {
     KUBECONFIG = credentials("config") // we retrieve  kubeconfig from secret file called config saved on jenkins
     }
@@ -98,7 +93,9 @@ stage('Deploiement en dev'){
     }
   }
   stage('Deploiement en prod'){
-    environment {
+    when {
+    branch 'master'
+}    environment {
       KUBECONFIG = credentials("config") // we retrieve  kubeconfig from secret file called config saved on jenkins
       }
       steps {
